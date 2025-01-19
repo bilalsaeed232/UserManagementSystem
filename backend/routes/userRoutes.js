@@ -60,4 +60,34 @@ router.get("/me", authenticate, async (req, res) => {
     }
 })
 
+// Update user profile
+router.put("/me", authenticate, async (req, res) => {
+    const { name, email } = req.body
+
+    try {
+        const updatedData = {}
+        if(name) updatedData.name = name
+        if(email) updatedData.email = email
+
+        // Update the user in the database
+        const updatedUser = await User.findByIdAndUpdate(
+            req.user.id,
+            { $set: updatedData },
+            { new: true, runValidators: true }
+        ).select("-password") // Exclude password from the response
+
+        if(!updatedUser) return res.status(404).json({message: "User not found"})
+
+        res.status(200).json({message: "Profile updated successfully", user: updatedUser})
+    } catch (error) {
+        // Handle duplicate email errors
+        if (error.code === 11000) {
+            return res.status(400).json({message: "Email already exists"})
+        }
+        res.status(500).json({error: error.message})
+    }
+})
+
+
+
 module.exports = router;
