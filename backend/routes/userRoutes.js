@@ -2,6 +2,7 @@ const express = require("express")
 const bcrypt = require("bcryptjs")
 const jwt = require("jsonwebtoken")
 const User = require("../models/User")
+const Session = require("../models/Session")
 const authenticate = require("../middleware/auth")
 const upload = require("../middleware/upload")
 
@@ -23,7 +24,7 @@ router.post("/register", async (req, res) => {
 
 // Login User
 router.post("/login", async (req, res) => {
-    const {email, password} = req.body
+    const {email, password, deviceName} = req.body
 
     try {
         const user = await User.findOne({email})
@@ -40,6 +41,16 @@ router.post("/login", async (req, res) => {
 
         // generate jwt and send in payload
         const token = jwt.sign({id: user._id}, process.env.JWT_SECRET, { expiresIn: "1h"})
+
+        // Save session in the database
+        const ipAddress = req.ip || "Unknown IP"
+        await Session.create({
+            userId: user.id,
+            deviceName: deviceName || "Unknown Device",
+            ipAddress,
+            token
+        })
+
         res.status(200).json({ token })
     } catch (error) {
         res.status(500).json({error: error.message})    
