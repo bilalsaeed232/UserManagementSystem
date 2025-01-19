@@ -2,6 +2,7 @@ const express = require("express")
 const bcrypt = require("bcryptjs")
 const jwt = require("jsonwebtoken")
 const User = require("../models/User")
+const authenticate = require("../middleware/auth")
 
 const router = express.Router()
 
@@ -36,11 +37,26 @@ router.post("/login", async (req, res) => {
             return res.status(400).json({message: "Invalid credentials"})
         }
 
-        // genereate jwt and send in payload
+        // generate jwt and send in payload
         const token = jwt.sign({id: user._id}, process.env.JWT_SECRET, { expiresIn: "1h"})
         res.status(200).json({ token })
     } catch (error) {
         res.status(500).json({error: error.message})    
+    }
+})
+
+
+// Get User details
+router.get("/me", authenticate, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id).select("-password"); // exlude password from resultset
+        if (!user) {
+            return res.status(404).json({message: "User not found"})
+        }
+
+        res.status(200).json(user)
+    } catch (error) {
+        res.status(500).json({ error: error.message })
     }
 })
 
