@@ -3,6 +3,7 @@ const bcrypt = require("bcryptjs")
 const jwt = require("jsonwebtoken")
 const User = require("../models/User")
 const authenticate = require("../middleware/auth")
+const upload = require("../middleware/upload")
 
 const router = express.Router()
 
@@ -50,24 +51,28 @@ router.post("/login", async (req, res) => {
 router.get("/me", authenticate, async (req, res) => {
     try {
         const user = await User.findById(req.user.id).select("-password"); // exlude password from resultset
+        const profileImageUrl = user.profileImage ? `http://localhost:5000/uploads/${user.profileImage}`: null
         if (!user) {
             return res.status(404).json({message: "User not found"})
         }
 
-        res.status(200).json(user)
+        res.status(200).json({user, profileImageUrl})
     } catch (error) {
+        console.error(error)
         res.status(500).json({ error: error.message })
     }
 })
 
 // Update user profile
-router.put("/me", authenticate, async (req, res) => {
+router.put("/me", authenticate, upload.single("profileImage"), async (req, res) => {
     const { name, email } = req.body
+    const profileImage = req.file ? req.file.filename : undefined;
 
     try {
         const updatedData = {}
         if(name) updatedData.name = name
         if(email) updatedData.email = email
+        if(profileImage) updatedData.profileImage = profileImage
 
         // Update the user in the database
         const updatedUser = await User.findByIdAndUpdate(
