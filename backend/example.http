@@ -1,0 +1,27 @@
+POST http://localhost:5000/api/users/login
+User-Agent: rest-client
+Accept-Language: en-GB,en-US;q=0.8,en;q=0.6,zh-CN;q=0.4
+Content-Type: application/json
+
+{
+    "email": "bilal@gmail.com",
+    "password": "123456"
+}
+###
+POST http://localhost:5000/api/users/login
+User-Agent: rest-client
+Accept-Language: en-GB,en-US;q=0.8,en;q=0.6,zh-CN;q=0.4
+Content-Type: application/json
+
+{
+    "email": "omar@gmail.com",
+    "password": "123456"
+}
+
+###
+GET http://localhost:5000/api/users/me
+Authorization: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY3OGQ3ZjZiZWJiMGMwM2JlZGE4NGEwMCIsImlhdCI6MTczNzMzNDczMCwiZXhwIjoxNzM3MzM4MzMwfQ.kQt4UEqsEuh96u7U9K2AeWkHEeD_pWX4QuvwvpukpOs
+
+###
+GET http://localhost:5000/api/sessions/devices
+Authorization: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY3OGRmYWJkNmNjOWNkODc4OWFkMTcxOSIsImlhdCI6MTczNzM2MTQwMCwiZXhwIjoxNzM3MzY1MDAwfQ.wjwEvaBN2dQxzQpHQWAHfwejNSXAX8TcHv5V0CTT1l4

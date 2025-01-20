@@ -44,19 +44,32 @@ router.post("/login", async (req, res) => {
 
         // Save session in the database
         const ipAddress = req.ip || "Unknown IP"
+        const userAgent = req.headers["user-agent"] || "Unknown";
+
+        // Check if a session already exists for this user with the same device and IP
+        const existingSession = await Session.findOne({
+            userId: user._id,
+            ipAddress,
+            deviceName: userAgent,
+        });
+
+        if (existingSession) {
+            // Return the existing token
+            return res.status(200).json({ token: existingSession.token });
+        }
+   
         await Session.create({
             userId: user.id,
-            deviceName: deviceName || "Unknown Device",
+            deviceName: userAgent,
             ipAddress,
             token
         })
-
+ 
         res.status(200).json({ token })
     } catch (error) {
         res.status(500).json({error: error.message})    
     }
 })
-
 
 // Get User details
 router.get("/me", authenticate, async (req, res) => {
