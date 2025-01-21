@@ -8,19 +8,94 @@ const upload = require("../middleware/upload")
 
 const router = express.Router()
 
+// Generate verification token
+const generateVerificationToken = (userId) => {
+    return jwt.sign(
+        { id: userId, purpose: 'email-verification' },
+        process.env.JWT_SECRET,
+        { expiresIn: '24h' }
+    );
+};
+
 // Register User
 router.post("/register", async (req, res) => {
     const { name, email, password } = req.body
 
     try {
+        // Validate input
+        if (!name || !email || !password) {
+            return res.status(400).json({ message: "All fields are required" });
+        }
+
+        // Check if user already exists
+        const existingUser = await User.findOne({ email });
+        if (existingUser) {
+            return res.status(400).json({ message: "Email already registered" });
+        }
+
         const hashedPassword = await bcrypt.hash(password, 10);
-        const user = new User({name, email, password: hashedPassword})
-        await user.save()
-        res.status(201).json({message: "User created successfully!"})
+        const user = new User({
+            name,
+            email,
+            password: hashedPassword,
+            isVerified: false
+        });
+        await user.save();
+
+        // Generate verification token
+        const verificationToken = generateVerificationToken(user._id);
+
+        // In a real application, you would send this via email
+        // For this demo, we'll return it in the response
+        res.status(201).json({
+            message: "User created successfully! Please verify your email.",
+            verificationToken,
+            verificationLink: `http://localhost:3000/verify-email?token=${verificationToken}`
+        });
     } catch (error) {
         res.status(500).json({ error: error.message })
     }
 })
+
+// Verify Email
+router.get("/verify-email", async (req, res) => {
+    const { token } = req.query;
+
+    try {
+        if (!token) {
+            return res.status(400).json({ message: "Verification token is required" });
+        }
+
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        
+        // Check if this is a verification token
+        if (decoded.purpose !== 'email-verification') {
+            return res.status(400).json({ message: "Invalid verification token" });
+        }
+
+        const user = await User.findById(decoded.id);
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        if (user.isVerified) {
+            return res.status(400).json({ message: "Email already verified" });
+        }
+
+        user.isVerified = true;
+        await user.save();
+
+        res.status(200).json({ message: "Email verified successfully" });
+    } catch (error) {
+        if (error.name === 'JsonWebTokenError') {
+            return res.status(400).json({ message: "Invalid verification token" });
+        }
+        if (error.name === 'TokenExpiredError') {
+            return res.status(400).json({ message: "Verification token has expired" });
+        }
+        res.status(500).json({ error: error.message });
+    }
+});
 
 // Login User
 router.post("/login", async (req, res) => {
@@ -31,6 +106,11 @@ router.post("/login", async (req, res) => {
         // user not found
         if (!user) {
             return res.status(404).json({message:"User not found"})
+        }
+
+        // Check if email is verified
+        if (!user.isVerified) {
+            return res.status(403).json({ message: "Please verify your email before logging in" });
         }
 
         const isMatch = await bcrypt.compare(password, user.password)
@@ -116,7 +196,5 @@ router.put("/me", authenticate, upload.single("profileImage"), async (req, res) 
         res.status(500).json({error: error.message})
     }
 })
-
-
 
 module.exports = router;
