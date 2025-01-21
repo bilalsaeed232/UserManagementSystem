@@ -19,18 +19,34 @@ router.get("/devices", authenticate, async (req, res) => {
 })
 
 router.delete("/devices/logout", authenticate, async (req, res) => {
-    const { token } = req.body; // Token of the device to log out
+    const { deviceId } = req.body; // Session ID of the device to log out
 
     try {
-
-        const session = await Session.findOneAndDelete({ userId: req.user.id, token, deviceName: userAgent })
-        if (!session) {
-            return res.status(404).json({message: "Session not found"})
+        if (!deviceId) {
+            return res.status(400).json({ message: "Device ID is required" });
         }
 
-        res.status(200).json({ message: "Logged out from the device successfully" })
+        const session = await Session.findOne({ 
+            _id: deviceId,
+            userId: req.user.id
+        });
+
+        if (!session) {
+            return res.status(404).json({ message: "Device session not found" });
+        }
+
+        // Don't allow logging out from current device, we use userRoutes to logout self
+        if (session.token === req.token) {
+            return res.status(400).json({ message: "Cannot logout from current device" });
+        }
+
+        await session.deleteOne();
+        res.status(200).json({ message: "Logged out from the device successfully" });
     } catch (error) {
-        res.status(500).json({error: error.message })
+        if (error.name === 'CastError') {
+            return res.status(400).json({ message: "Invalid device ID format" });
+        }
+        res.status(500).json({ error: error.message });
     }
 })
 
